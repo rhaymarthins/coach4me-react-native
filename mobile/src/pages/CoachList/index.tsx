@@ -1,29 +1,29 @@
-import React, { useCallback, useState } from 'react';
-import { ScrollView, View, Text, TextInput } from 'react-native';
-import { BorderlessButton, RectButton } from 'react-native-gesture-handler';
-import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useState } from "react";
+import { ScrollView, View, Text, TextInput } from "react-native";
+import { BorderlessButton, RectButton } from "react-native-gesture-handler";
+import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import api from '../../services/api';
+import api from "../../services/api";
 
-import CoachItem, { Coach } from '../../components/CoachItem';
-import PageHeader from '../../components/PageHeader';
+import CoachItem, { Coach } from "../../components/CoachItem";
+import PageHeader from "../../components/PageHeader";
 
-import styles from './styles';
-import { useFocusEffect } from '@react-navigation/native';
-
+import styles from "./styles";
+import { useFocusEffect } from "@react-navigation/native";
 
 function CoachList() {
   const [coaches, setCoaches] = useState([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
-  const [subject, setSubject] = useState('');
-  const [week_day, setWeekDay] = useState('');
-  const [time, setTime] = useState('');
+  const [subject, setSubject] = useState("");
+  const [week_day, setWeekDay] = useState("");
+  const [time, setTime] = useState("");
+  const [filterError, setFilterError] = useState("");
 
   function loadFavorites() {
-    AsyncStorage.getItem('favorites').then(response => {
+    AsyncStorage.getItem("favorites").then((response) => {
       if (response) {
         const favoritedCoaches = JSON.parse(response);
         const favoritedCoachesIds = favoritedCoaches.map((coach: Coach) => {
@@ -38,7 +38,7 @@ function CoachList() {
   useFocusEffect(
     useCallback(() => {
       loadFavorites();
-    }, [])
+    }, []),
   );
 
   function handleToggleFiltersVisible() {
@@ -46,37 +46,47 @@ function CoachList() {
   }
 
   async function handleFiltersSubmit() {
+    if (!subject || !week_day || !time) {
+      setFilterError("Preencha matéria, dia da semana e horário.");
+      return;
+    }
+
+    setFilterError("");
     loadFavorites();
 
-    const response = await api.get('classes', {
-      params: {
-        subject,
-        week_day,
-        time,
-      }
-    });
+    try {
+      const response = await api.get("classes", {
+        params: {
+          subject,
+          week_day,
+          time,
+        },
+      });
 
-    setIsFiltersVisible(false);
-    setCoaches(response.data);
+      setIsFiltersVisible(false);
+      setCoaches(response.data);
+    } catch {
+      setFilterError("Não foi possível buscar os coaches. Tente novamente.");
+    }
   }
 
   return (
     <View style={styles.container}>
-      <PageHeader 
-        title="Coaches disponíveis" 
-        headerRight={(
+      <PageHeader
+        title="Coaches disponíveis"
+        headerRight={
           <BorderlessButton onPress={handleToggleFiltersVisible}>
             <Feather name="filter" size={20} color="#fff" />
           </BorderlessButton>
-        )}
+        }
       >
-        { isFiltersVisible && (
+        {isFiltersVisible && (
           <View style={styles.searchForm}>
             <Text style={styles.label}>Matéria</Text>
             <TextInput
               style={styles.input}
               value={subject}
-              onChangeText={text => setSubject(text)}
+              onChangeText={(text) => setSubject(text)}
               placeholder="Qual a matéria?"
               placeholderTextColor="#c1bccc"
             />
@@ -87,7 +97,7 @@ function CoachList() {
                 <TextInput
                   style={styles.input}
                   value={week_day}
-                  onChangeText={text => setWeekDay(text)}
+                  onChangeText={(text) => setWeekDay(text)}
                   placeholder="Qual o dia?"
                   placeholderTextColor="#c1bccc"
                 />
@@ -98,14 +108,21 @@ function CoachList() {
                 <TextInput
                   style={styles.input}
                   value={time}
-                  onChangeText={text => setTime(text)}
+                  onChangeText={(text) => setTime(text)}
                   placeholder="Qual horário?"
                   placeholderTextColor="#c1bccc"
                 />
               </View>
             </View>
 
-            <RectButton onPress={handleFiltersSubmit} style={styles.submitButton}>
+            {filterError !== "" && (
+              <Text style={styles.errorText}>{filterError}</Text>
+            )}
+
+            <RectButton
+              onPress={handleFiltersSubmit}
+              style={styles.submitButton}
+            >
               <Text style={styles.submitButtonText}>Filtrar</Text>
             </RectButton>
           </View>
@@ -121,13 +138,13 @@ function CoachList() {
       >
         {coaches.map((coach: Coach) => {
           return (
-            <CoachItem 
-              key={coach.id} 
+            <CoachItem
+              key={coach.id}
               coach={coach}
-              favorited={favorites.includes(coach.id)} 
+              favorited={favorites.includes(coach.id)}
             />
           );
-        })}        
+        })}
       </ScrollView>
     </View>
   );
